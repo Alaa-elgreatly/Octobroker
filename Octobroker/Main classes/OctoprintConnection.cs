@@ -273,19 +273,20 @@ namespace Octobroker
         private void WebsocketSync()
         {
             string temporarystorage = "";
-            var buffer = new byte[4096];
+            var buffer = new byte[8096];
             CancellationToken cancellation = CancellationToken.None;
             //var awaiter = task.GetAwaiter();
             WebSocketReceiveResult received;// = WebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellation).GetAwaiter().GetResult();
             while (!WebSocket.CloseStatus.HasValue && listening)
             {
                 received = WebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellation).GetAwaiter().GetResult();
-                using (System.IO.StreamWriter file =
-                    new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\Raw_received.txt", true))
-                {
-                    file.WriteLine(received);
-                }
+                
                 string text = System.Text.Encoding.UTF8.GetString(buffer, 0, received.Count);
+                using (System.IO.StreamWriter file =
+                    new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\Raw_received.Json", true))
+                {
+                    file.WriteLine(text);
+                }
                 JObject obj = null;// = JObject(text);
                 //JObject.Parse(text);
                 try
@@ -303,15 +304,19 @@ namespace Octobroker
                     catch
                     {
                         Debug.WriteLine("had to read something in more lines");
+                        using (System.IO.StreamWriter file =
+                            new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\Raw_received.Json", true))
+                        {
+                            file.WriteLine("had to read something in more lines");
+                        }
                     }
                 }
 
                 if (obj != null)
                 {
-                    JToken current = obj.Value<JToken>("current");
-
-                    if (current != null)
-                    {
+                    //JToken current = obj.Value<JToken>("current");
+                    //if (current != null)
+                    //{
 
 
                         //JToken job = current.Value<JToken>("job");
@@ -322,31 +327,36 @@ namespace Octobroker
 
                         //    Jobs.CallJob(jobInfo);
                         //}
-                        using (System.IO.StreamWriter file =
-                            new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\current.txt", true))
-                        {
-                            file.WriteLine(current);
-                        }
-                        using (System.IO.StreamWriter file =
-                            new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\obj.txt", true))
-                        {
-                            file.WriteLine(obj);
-                        }
+                        //using (System.IO.StreamWriter file =
+                        //    new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\current.txt", true))
+                        //{
+                        //    file.WriteLine(current);
+                        //}
+                        //using (System.IO.StreamWriter file =
+                        //    new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\obj.txt", true))
+                        //{
+                        //    file.WriteLine(obj);
+                        //}
+//
+                    //}
+                    JToken events = obj.Value<JToken>("event");
 
-                        JToken job = current.Value<JToken>("file");
-                        if (job != null )
+                    if (events != null)
+                    {
+                        string eventName = events.Value<string>("type");
+                        if (!string.IsNullOrEmpty(eventName) && eventName=="FileAdded")
                         {
-                            OctoprintJobInfo jobInfo = new OctoprintJobInfo(job);
-                            Jobs.JobinfoHandlers += Jobs.GetUploadedFileInfo;
+                            JToken eventpayload = events.Value<JToken>("payload");
+                            var octoFile = new OctoprintFile((JObject)eventpayload);
 
-                            Jobs.CallJob(jobInfo);
                         }
                     }
-
                 }
 
-
             }
+
+
+            
         }
 
         /// <summary>

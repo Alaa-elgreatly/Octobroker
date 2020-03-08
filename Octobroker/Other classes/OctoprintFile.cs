@@ -10,7 +10,8 @@ namespace Octobroker
 
             Name = filedata.Value<String>("name") ?? "";
             Path = filedata.Value<String>("path") ?? "";
-            Type = filedata.Value<String>("type") ?? "file";
+            //Type = filedata.Value<String>("type") ?? "file";
+            TypePath = filedata.Value<String[]>("type");
             Hash = filedata.Value<String>("hash") ?? "";
             Size = filedata.Value<int?>("size") ?? -1;
             Date = filedata.Value<int?>("date") ?? -1;
@@ -21,7 +22,7 @@ namespace Octobroker
         public string Name { get; set; }
         public string Path { get; set; }
         public string Type { get; set; }
-        //public string[] TypePath { get; set; }
+        public string[] TypePath { get; set; }
         public string Hash { get; set; }
         public int Size { get; set; }
         public int Date { get; set; }
