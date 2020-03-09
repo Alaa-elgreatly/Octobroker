@@ -7,6 +7,7 @@ using System.Net.WebSockets;
 using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Octobroker.Octo_Events;
 
 namespace Octobroker
 
@@ -283,7 +284,7 @@ namespace Octobroker
                 
                 string text = System.Text.Encoding.UTF8.GetString(buffer, 0, received.Count);
                 using (System.IO.StreamWriter file =
-                    new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\Raw_received.Json", true))
+                    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\Raw_received.Json", true))
                 {
                     file.WriteLine(text);
                 }
@@ -305,7 +306,7 @@ namespace Octobroker
                     {
                         Debug.WriteLine("had to read something in more lines");
                         using (System.IO.StreamWriter file =
-                            new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\Raw_received.Json", true))
+                            new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\Raw_received.Json", true))
                         {
                             file.WriteLine("had to read something in more lines");
                         }
@@ -328,12 +329,12 @@ namespace Octobroker
                         //    Jobs.CallJob(jobInfo);
                         //}
                         //using (System.IO.StreamWriter file =
-                        //    new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\current.txt", true))
+                        //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\current.txt", true))
                         //{
                         //    file.WriteLine(current);
                         //}
                         //using (System.IO.StreamWriter file =
-                        //    new System.IO.StreamWriter(@"G:\Work\Siegen University\Florian\my Application stuff\Logging response\obj.txt", true))
+                        //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\obj.txt", true))
                         //{
                         //    file.WriteLine(obj);
                         //}
@@ -347,7 +348,8 @@ namespace Octobroker
                         if (!string.IsNullOrEmpty(eventName) && eventName=="FileAdded")
                         {
                             JToken eventpayload = events.Value<JToken>("payload");
-                            var octoFile = new OctoprintFile((JObject)eventpayload);
+                            
+                            FileAddedEvent file = new FileAddedEvent(eventName,eventpayload);
 
                         }
                     }

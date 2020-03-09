@@ -10,14 +10,17 @@ namespace Octobroker
 
             Name = filedata.Value<String>("name") ?? "";
             Path = filedata.Value<String>("path") ?? "";
-            //Type = filedata.Value<String>("type") ?? "file";
-            TypePath = filedata.Value<String[]>("type");
+            Type = filedata.Value<String>("type") ?? "file";
             Hash = filedata.Value<String>("hash") ?? "";
             Size = filedata.Value<int?>("size") ?? -1;
             Date = filedata.Value<int?>("date") ?? -1;
             Origin = filedata.Value<String>("origin") ?? "";
         }
 
+        public OctoprintFile()
+        {
+                
+        }
         
         public string Name { get; set; }
         public string Path { get; set; }
