@@ -30,7 +30,7 @@ namespace Octobroker.Slicing_broker
             OutputName = outputName;
         }
         private int fillDensity = 20;
-        public string FilePath { get; private set; }
+        public string FilePath { get;  set; }
         public double LayerHeightInMM { get; private set; } = 0.3;
 
         public string OutputPath { get; set; }

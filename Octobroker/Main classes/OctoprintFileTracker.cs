@@ -56,6 +56,30 @@ namespace Octobroker
             OctoprintFolder folder = new OctoprintFolder(data,this) { Name = data.Value<String>("name")??"", Path = data.Value<String>("path")??"", Type = "folder" };
             return folder;
         }
+        /// <summary>
+        /// Sends a get request to get a specific file info
+        /// </summary>
+        /// <param name="path"> the path of the file including its name and extension</param>
+        /// <returns></returns>
+        public JObject GetFileInfo(string location,string path)
+        {
+            string jobInfo = "";
+            try
+            {
+                jobInfo = Connection.Get("api/files/"+location +"/" + path);
+            }
+            catch (WebException e)
+            {
+                switch (((HttpWebResponse)e.Response).StatusCode)
+                {
+                    case HttpStatusCode.NotFound:
+                        Debug.WriteLine("searched for a file that wasn't there at " + path);
+                        return null;
+                }
+            }
+            JObject jObject = JsonConvert.DeserializeObject<JObject>(jobInfo);
+            return jObject;
+        }
 
         /// <summary>
         /// Selects the File for printing
@@ -235,6 +259,7 @@ namespace Octobroker
             return Connection.PostMultipart(packagestring, "/api/files/local");
         }
 
+
         /// <summary>
         /// Uploads a file from local to the Server
         /// </summary>
@@ -244,32 +269,71 @@ namespace Octobroker
         /// <param name="location">Location to upload to, local or sdcard, not sure if sdcard works, but takes ages anyway.</param>
         /// <param name="select">If set to <c>true</c> selects the File to print next.</param>
         /// <param name="print">If set to <c>true</c> prints the File.</param>
-        public string UploadFile(string filename,  string onlinepath="", string location="local", bool select=false, bool print=false)
+        public string UploadFile(string filepath, string filename, string onlinepath = "local\\", string location = "local", bool select = false, bool print = false)
         {
-            string fileData =string.Empty;
-            fileData= System.IO.File.ReadAllText(filename);
-            filename=(filename.Split('/')[filename.Split('/').Length-1]).Split('\\')[filename.Split('\\')[filename.Split('\\').Length - 1].Length - 1];
-            string packagestring="" +
-                "--{0}\r\n" +
-                "Content-Disposition: form-data; name=\"file\"; filename=\""+filename+"\"\r\n" +
-                "Content-Type: application/octet-stream\r\n" +
-                "\r\n" +
-                fileData + "\r\n" +
-                
-                "--{0}\r\n" +
-                "Content-Disposition: form-data; name=\"path\";\r\n" +
-                "\r\n" +
-                onlinepath + "\r\n" +
-                "--{0}--\r\n" +
-                "Content-Disposition: form-data; name=\"select\";\r\n" +
-                "\r\n" +
-                select + "\r\n" +
-                "--{0}--\r\n" +
-                "Content-Disposition: form-data; name=\"print\"\r\n" +
-                "\r\n" +
-                print + "\r\n" +
-                "--{0}--\r\n";
-            return Connection.PostMultipart(packagestring, "api/files/"+location);
+            string fileData = string.Empty;
+            fileData = System.IO.File.ReadAllText(filepath);
+            //filename = (filepath.Split('/')[filepath.Split('/').Length - 1]).Split('\\')[filepath.Split('\\')[filepath.Split('\\').Length - 1].Length - 1];
+            string packagestring = "" +
+                                   "--{0}\r\n" +
+                                   "Content-Disposition: form-data; name=\"file\"; filename=\"" + filename + "\"\r\n" +
+                                   "Content-Type: application/octet-stream\r\n" +
+                                   "\r\n" +
+                                   fileData + "\r\n" +
+
+                                   "--{0}\r\n" +
+                                   "Content-Disposition: form-data; name=\"path\";\r\n" +
+                                   "\r\n" +
+                                   onlinepath + "\r\n" +
+                                   "--{0}--\r\n" +
+                                   "Content-Disposition: form-data; name=\"select\";\r\n" +
+                                   "\r\n" +
+                                   select + "\r\n" +
+                                   "--{0}--\r\n" +
+                                   "Content-Disposition: form-data; name=\"print\"\r\n" +
+                                   "\r\n" +
+                                   print + "\r\n" +
+                                   "--{0}--\r\n";
+            return Connection.PostMultipart(packagestring, "api/files/" + location);
         }
+
+
+
+        /// <summary>
+        /// Uploads a file from local to the Server
+        /// </summary>
+        /// <returns>The Http Result</returns>
+        /// <param name="filename">Filename of the local file.</param>
+        /// <param name="onlinepath">Path to upload the file to.</param>
+        /// <param name="location">Location to upload to, local or sdcard, not sure if sdcard works, but takes ages anyway.</param>
+        /// <param name="select">If set to <c>true</c> selects the File to print next.</param>
+        /// <param name="print">If set to <c>true</c> prints the File.</param>
+        //public string UploadFile(string filename,  string onlinepath="", string location="local", bool select=false, bool print=false)
+        //{
+        //    string fileData =string.Empty;
+        //    fileData= System.IO.File.ReadAllText(filename);
+        //    filename=(filename.Split('/')[filename.Split('/').Length-1]).Split('\\')[filename.Split('\\')[filename.Split('\\').Length - 1].Length - 1];
+        //    string packagestring="" +
+        //        "--{0}\r\n" +
+        //        "Content-Disposition: form-data; name=\"file\"; filename=\""+filename+"\"\r\n" +
+        //        "Content-Type: application/octet-stream\r\n" +
+        //        "\r\n" +
+        //        fileData + "\r\n" +
+
+        //        "--{0}\r\n" +
+        //        "Content-Disposition: form-data; name=\"path\";\r\n" +
+        //        "\r\n" +
+        //        onlinepath + "\r\n" +
+        //        "--{0}--\r\n" +
+        //        "Content-Disposition: form-data; name=\"select\";\r\n" +
+        //        "\r\n" +
+        //        select + "\r\n" +
+        //        "--{0}--\r\n" +
+        //        "Content-Disposition: form-data; name=\"print\"\r\n" +
+        //        "\r\n" +
+        //        print + "\r\n" +
+        //        "--{0}--\r\n";
+        //    return Connection.PostMultipart(packagestring, "api/files/"+location);
+        //}
     }
 }

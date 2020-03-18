@@ -73,7 +73,7 @@ namespace Octobroker
             //token = source.Token;
             var canceltoken = CancellationToken.None;
             WebSocket = new ClientWebSocket();
-            WebSocket.ConnectAsync(new Uri("ws://"+EndPoint.Replace("https://", "").Replace("http://", "")+"sockjs/websocket"), canceltoken).GetAwaiter().GetResult();
+            WebSocket.ConnectAsync(new Uri("ws://" + EndPoint.Replace("https://", "").Replace("http://", "") + "sockjs/websocket"), canceltoken).GetAwaiter().GetResult();
             //
             //Correct format should be
             // WebSocket.ConnectAsync(new Uri("ws://192.168.1.41:5000/sockjs/websocket"), canceltoken).GetAwaiter().GetResult();
@@ -186,7 +186,7 @@ namespace Octobroker
             //byte[] byteArray = Encoding.UTF8.GetBytes(argumentString);
             HttpWebRequest request = WebRequest.CreateHttp(EndPoint + location);// + "?apikey=" + apiKey);
             request.Method = "POST";
-            request.Headers["X-Api-Key"]=ApiKey;
+            request.Headers["X-Api-Key"] = ApiKey;
             request.ContentType = "application/json";
             using (var streamWriter = new StreamWriter(request.GetRequestStream()))
             {
@@ -214,7 +214,7 @@ namespace Octobroker
             Debug.WriteLine(EndPoint + location + "?apikey=" + ApiKey);
             HttpWebRequest request = WebRequest.CreateHttp(EndPoint + location);// + "?apikey=" + apiKey);
             request.Method = "DELETE";
-            request.Headers["X-Api-Key"]=ApiKey;
+            request.Headers["X-Api-Key"] = ApiKey;
             HttpWebResponse httpResponse;
             httpResponse = (HttpWebResponse)request.GetResponse();
             using (var streamReader = new StreamReader(httpResponse.GetResponseStream()))
@@ -230,7 +230,7 @@ namespace Octobroker
         /// <returns>The Result if any.</returns>
         /// <param name="packagestring">A packagestring should be generated elsewhere and input here as a String</param>
         /// <param name="location">The url sub-address like "http://192.168.1.2/<paramref name="location"/>"</param>
-        public string PostMultipart(string packagestring,string location)
+        public string PostMultipart(string packagestring, string location)
         {
             Debug.WriteLine("A Multipart was posted to:");
             Debug.WriteLine(EndPoint + location + "?apikey=" + ApiKey);
@@ -243,7 +243,11 @@ namespace Octobroker
             string package = packagestring.Replace("{0}", boundary);
 
             var nfile = webClient.Encoding.GetBytes(package);
-            byte[] resp = webClient.UploadData(EndPoint+location, "POST", nfile);
+
+
+            File.WriteAllBytes(@"G:\Work\testbytes.txt", nfile);
+
+            byte[] resp = webClient.UploadData(EndPoint + location, "POST", nfile);
             return strResponseValue;
         }
 
@@ -281,7 +285,7 @@ namespace Octobroker
             while (!WebSocket.CloseStatus.HasValue && listening)
             {
                 received = WebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellation).GetAwaiter().GetResult();
-                
+
                 string text = System.Text.Encoding.UTF8.GetString(buffer, 0, received.Count);
                 using (System.IO.StreamWriter file =
                     new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\Raw_received.Json", true))
@@ -320,37 +324,43 @@ namespace Octobroker
                     //{
 
 
-                        //JToken job = current.Value<JToken>("job");
-                        //if (job != null && Jobs.JobListens())
-                        //{
-                        //    OctoprintJobInfo jobInfo = new OctoprintJobInfo(job);
-                        //    Jobs.JobinfoHandlers += Jobs.GetUploadedFileInfo;
+                    //JToken job = current.Value<JToken>("job");
+                    //if (job != null && Jobs.JobListens())
+                    //{
+                    //    OctoprintJobInfo jobInfo = new OctoprintJobInfo(job);
+                    //    Jobs.JobinfoHandlers += Jobs.GetUploadedFileInfo;
 
-                        //    Jobs.CallJob(jobInfo);
-                        //}
-                        //using (System.IO.StreamWriter file =
-                        //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\current.txt", true))
-                        //{
-                        //    file.WriteLine(current);
-                        //}
-                        //using (System.IO.StreamWriter file =
-                        //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\obj.txt", true))
-                        //{
-                        //    file.WriteLine(obj);
-                        //}
-//
+                    //    Jobs.CallJob(jobInfo);
+                    //}
+                    //using (System.IO.StreamWriter file =
+                    //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\current.txt", true))
+                    //{
+                    //    file.WriteLine(current);
+                    //}
+                    //using (System.IO.StreamWriter file =
+                    //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\obj.txt", true))
+                    //{
+                    //    file.WriteLine(obj);
+                    //}
+                    //
                     //}
                     JToken events = obj.Value<JToken>("event");
 
                     if (events != null)
                     {
                         string eventName = events.Value<string>("type");
-                        if (!string.IsNullOrEmpty(eventName) && eventName=="FileAdded")
+                        if (!string.IsNullOrEmpty(eventName) && eventName == "FileAdded")
                         {
                             JToken eventpayload = events.Value<JToken>("payload");
-                            
-                            FileAddedEvent file = new FileAddedEvent(eventName,eventpayload);
 
+                            FileAddedEvent fileEvent = new FileAddedEvent(eventName, eventpayload);
+
+                            var downloadpath = "G:\\Temp\\newtemp.stl";
+
+                            if (fileEvent.Type == "stl")
+                                //only for testing upload
+                                fileEvent.UploadToOctoprint("G:\\Work\\vasawithlayer.gcode",this);
+                            //fileEvent.DownloadAssociatedFile("local", downloadpath, this);
                         }
                     }
                 }
@@ -358,7 +368,7 @@ namespace Octobroker
             }
 
 
-            
+
         }
 
         /// <summary>
@@ -486,4 +496,3 @@ namespace Octobroker
         //}
     }
 }
- 
