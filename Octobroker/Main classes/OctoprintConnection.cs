@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Octobroker.Octo_Events;
@@ -230,7 +232,7 @@ namespace Octobroker
         /// <returns>The Result if any.</returns>
         /// <param name="packagestring">A packagestring should be generated elsewhere and input here as a String</param>
         /// <param name="location">The url sub-address like "http://192.168.1.2/<paramref name="location"/>"</param>
-        public string PostMultipart(string packagestring, string location)
+        public string PostMultipartOld(string packagestring, string location)
         {
             Debug.WriteLine("A Multipart was posted to:");
             Debug.WriteLine(EndPoint + location + "?apikey=" + ApiKey);
@@ -249,6 +251,40 @@ namespace Octobroker
 
             byte[] resp = webClient.UploadData(EndPoint + location, "POST", nfile);
             return strResponseValue;
+        }
+        public async Task<string> PostMultipart(string fileData,string fileName, string location, string path = "")
+        {
+
+           
+            
+            var httpClient = new HttpClient();
+             var headers = httpClient.DefaultRequestHeaders;
+
+             headers.Add("X-Api-Key", ApiKey);
+            Uri requestUri = new Uri(EndPoint + location);
+
+          
+            MultipartFormDataContent multipartContent = new MultipartFormDataContent();
+            multipartContent.Add(new StringContent(fileData), "file", fileName);
+            multipartContent.Add(new StringContent("true"), "select");
+            multipartContent.Add(new StringContent("true"), "print");
+            if (path != "") multipartContent.Add(new StringContent(path), "path");
+            string responsebody = string.Empty;
+            try
+            {
+
+                //Send the GET request
+                var response = await httpClient.PostAsync(requestUri, multipartContent);
+
+                responsebody = await response.Content.ReadAsStringAsync();
+                //strResponseValue = httpResponseBody;
+            }
+            catch (Exception ex)
+            {
+                responsebody = "Error: " + ex.HResult.ToString("X") + " Message: " + ex.Message;
+            }
+            return responsebody;
+
         }
 
         /// <summary>
@@ -355,12 +391,12 @@ namespace Octobroker
 
                             FileAddedEvent fileEvent = new FileAddedEvent(eventName, eventpayload);
 
-                            var downloadpath = "G:\\Temp\\newtemp.stl";
+                            var downloadpath = "G:\\Temp\\";
 
                             if (fileEvent.Type == "stl")
-                                //only for testing upload
-                                fileEvent.UploadToOctoprint("G:\\Work\\vasawithlayer.gcode",this);
-                            //fileEvent.DownloadAssociatedFile("local", downloadpath, this);
+                                
+                                fileEvent.DownloadAndSliceAndUploadAssociatedFile("local", downloadpath, this);
+                            
                         }
                     }
                 }

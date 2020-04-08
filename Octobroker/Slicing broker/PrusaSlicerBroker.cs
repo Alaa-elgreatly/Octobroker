@@ -71,7 +71,7 @@ namespace Octobroker.Slicing_broker
                 UseShellExecute = true,
                 CreateNoWindow = true
             };
-            Process.Start(psi);
+            Process.Start(psi)?.WaitForExit(30000);
         }
 
         private string GenerateCommandString()

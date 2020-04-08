@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 namespace Octobroker
@@ -9,13 +10,13 @@ namespace Octobroker
     /// <summary>
     /// Tracks Files, can delete, upload and slice.
     /// </summary>
-    public class OctoprintFileTracker:OctoprintTracker
+    public class OctoprintFileTracker : OctoprintTracker
     {
         /// <summary>
         /// Initializes a Filetracker, this shouldn't be done directly and is part of the Connection it needs anyway
         /// </summary>
         /// <param name="con">The Octoprint connection it connects to.</param>
-        public OctoprintFileTracker(OctoprintConnection con):base(con)
+        public OctoprintFileTracker(OctoprintConnection con) : base(con)
         {
         }
 
@@ -38,7 +39,7 @@ namespace Octobroker
         /// <param name="path">The path to the Folder or File.</param>
         public OctoprintFolder GetFiles(string path)
         {
-            string jobInfo="";
+            string jobInfo = "";
             try
             {
                 jobInfo = Connection.Get("api/files" + path);
@@ -53,7 +54,7 @@ namespace Octobroker
                 }
             }
             JObject data = JsonConvert.DeserializeObject<JObject>(jobInfo);
-            OctoprintFolder folder = new OctoprintFolder(data,this) { Name = data.Value<String>("name")??"", Path = data.Value<String>("path")??"", Type = "folder" };
+            OctoprintFolder folder = new OctoprintFolder(data, this) { Name = data.Value<String>("name") ?? "", Path = data.Value<String>("path") ?? "", Type = "folder" };
             return folder;
         }
         /// <summary>
@@ -61,12 +62,12 @@ namespace Octobroker
         /// </summary>
         /// <param name="path"> the path of the file including its name and extension</param>
         /// <returns></returns>
-        public JObject GetFileInfo(string location,string path)
+        public JObject GetFileInfo(string location, string path)
         {
             string jobInfo = "";
             try
             {
-                jobInfo = Connection.Get("api/files/"+location +"/" + path);
+                jobInfo = Connection.Get("api/files/" + location + "/" + path);
             }
             catch (WebException e)
             {
@@ -88,7 +89,7 @@ namespace Octobroker
         /// <param name="path">The path of the file that should be selected.</param>
         /// <param name="location">The location (local or sdcard) where this File should be. Normally local</param>
         /// <param name="print">If set, defines if the GCode should be printed directly after being selected. null means false</param>
-        public string Select( string path, string location="local", bool print=false)
+        public string Select(string path, string location = "local", bool print = false)
         {
             JObject data = new JObject
             {
@@ -128,7 +129,7 @@ namespace Octobroker
         /// <param name="profile">The Profile of the Slicer.</param>
         /// <param name="profileparam">Parameter of the slicer that need to be overwriten from the Profile.</param>
         /// <param name="print">If set to <c>true</c> prints the GCode after slicing.</param>
-        public string Slice(string location, string path, bool select=false, string gcode="", int posx=100, int posy=100, string slicer="", string profile="", Dictionary<string,string> profileparam=null, bool print=false)
+        public string Slice(string location, string path, bool select = false, string gcode = "", int posx = 100, int posy = 100, string slicer = "", string profile = "", Dictionary<string, string> profileparam = null, bool print = false)
         {
             JObject data = new JObject
             {
@@ -140,7 +141,7 @@ namespace Octobroker
 
 
             };
-            if (profileparam!=null && profileparam.Count>0)
+            if (profileparam != null && profileparam.Count > 0)
             {
                 data.Add(JObject.FromObject(profileparam));
             }
@@ -152,7 +153,8 @@ namespace Octobroker
             {
                 data.Add("gcode", gcode);
             }
-            try {
+            try
+            {
                 return Connection.PostJson("api/files/" + location + "/" + path, data);
             }
             catch (WebException e)
@@ -170,7 +172,7 @@ namespace Octobroker
                     default:
                         return "unknown webexception occured";
                 }
-                   
+
             }
 
 
@@ -217,7 +219,8 @@ namespace Octobroker
         /// <param name="path">The path of the File to delete.</param>
         public string Delete(string location, string path)
         {
-            try {
+            try
+            {
                 return Connection.Delete("api/files/" + location + "/" + path);
             }
             catch (WebException e)
@@ -246,7 +249,7 @@ namespace Octobroker
         {
             string foldername = path.Split('/')[path.Split('/').Length - 1];
             path = path.Substring(0, path.Length - foldername.Length);
-            string packagestring="" +
+            string packagestring = "" +
                 "--{0}\r\n" +
                 "Content-Disposition: form-data; name=\"foldername\";\r\n" +
                 "\r\n" +
@@ -256,7 +259,8 @@ namespace Octobroker
                 "\r\n" +
                 path + "\r\n" +
                 "--{0}--\r\n";
-            return Connection.PostMultipart(packagestring, "/api/files/local");
+             return Connection.PostMultipartOld(packagestring, "/api/files/local");
+            
         }
 
 
@@ -269,7 +273,7 @@ namespace Octobroker
         /// <param name="location">Location to upload to, local or sdcard, not sure if sdcard works, but takes ages anyway.</param>
         /// <param name="select">If set to <c>true</c> selects the File to print next.</param>
         /// <param name="print">If set to <c>true</c> prints the File.</param>
-        public string UploadFile(string filepath, string filename, string onlinepath = "local\\", string location = "local", bool select = false, bool print = false)
+        public string UploadFileOld(string filepath, string filename, string onlinepath = "local\\", string location = "local", bool select = false, bool print = false)
         {
             string fileData = string.Empty;
             fileData = System.IO.File.ReadAllText(filepath);
@@ -294,46 +298,82 @@ namespace Octobroker
                                    "\r\n" +
                                    print + "\r\n" +
                                    "--{0}--\r\n";
-            return Connection.PostMultipart(packagestring, "api/files/" + location);
+            return Connection.PostMultipartOld(packagestring, "api/files/" + location);
         }
 
 
 
-        /// <summary>
-        /// Uploads a file from local to the Server
-        /// </summary>
-        /// <returns>The Http Result</returns>
-        /// <param name="filename">Filename of the local file.</param>
-        /// <param name="onlinepath">Path to upload the file to.</param>
-        /// <param name="location">Location to upload to, local or sdcard, not sure if sdcard works, but takes ages anyway.</param>
-        /// <param name="select">If set to <c>true</c> selects the File to print next.</param>
-        /// <param name="print">If set to <c>true</c> prints the File.</param>
-        //public string UploadFile(string filename,  string onlinepath="", string location="local", bool select=false, bool print=false)
-        //{
-        //    string fileData =string.Empty;
-        //    fileData= System.IO.File.ReadAllText(filename);
-        //    filename=(filename.Split('/')[filename.Split('/').Length-1]).Split('\\')[filename.Split('\\')[filename.Split('\\').Length - 1].Length - 1];
-        //    string packagestring="" +
-        //        "--{0}\r\n" +
-        //        "Content-Disposition: form-data; name=\"file\"; filename=\""+filename+"\"\r\n" +
-        //        "Content-Type: application/octet-stream\r\n" +
-        //        "\r\n" +
-        //        fileData + "\r\n" +
+        public async Task<string>  UploadFile(string path, string filename, string onlinepath = "", string location = "local", bool select = false, bool print = false)
+        {
+            string fileData = string.Empty;
+            fileData = System.IO.File.ReadAllText(path);
+            //filename = (filename.Split('/')[filename.Split('/').Length - 1]).Split('\\')[filename.Split('\\')[filename.Split('\\').Length - 1].Length - 1];
+            string packagestring;
+#if UNITY_EDITOR
+            packagestring= "" +
+                "--{0}\r\n" +
+                "Content-Disposition: form-data; name=\"file\"; filename=\"" + filename + "\"\r\n" +
+                "Content-Type: application/octet-stream\r\n" +
+                "\r\n" +
+                fileData + "\r\n" +
 
-        //        "--{0}\r\n" +
-        //        "Content-Disposition: form-data; name=\"path\";\r\n" +
-        //        "\r\n" +
-        //        onlinepath + "\r\n" +
-        //        "--{0}--\r\n" +
-        //        "Content-Disposition: form-data; name=\"select\";\r\n" +
-        //        "\r\n" +
-        //        select + "\r\n" +
-        //        "--{0}--\r\n" +
-        //        "Content-Disposition: form-data; name=\"print\"\r\n" +
-        //        "\r\n" +
-        //        print + "\r\n" +
-        //        "--{0}--\r\n";
-        //    return Connection.PostMultipart(packagestring, "api/files/"+location);
-        //}
+                "--{0}\r\n" +
+                "Content-Disposition: form-data; name=\"path\";\r\n" +
+                "\r\n" +
+                onlinepath + "\r\n" +
+                "--{0}--\r\n" +
+                "Content-Disposition: form-data; name=\"select\";\r\n" +
+                "\r\n" +
+                select + "\r\n" +
+                "--{0}--\r\n" +
+                "Content-Disposition: form-data; name=\"print\"\r\n" +
+                "\r\n" +
+                print + "\r\n" +
+                "--{0}--\r\n";
+#else
+            packagestring = fileData;
+#endif
+            string s = await Connection.PostMultipart(packagestring,filename, "api/files/" + location, onlinepath);
+            return s;
+        }
     }
+
+
+    /// <summary>
+    /// Uploads a file from local to the Server
+    /// </summary>
+    /// <returns>The Http Result</returns>
+    /// <param name="filename">Filename of the local file.</param>
+    /// <param name="onlinepath">Path to upload the file to.</param>
+    /// <param name="location">Location to upload to, local or sdcard, not sure if sdcard works, but takes ages anyway.</param>
+    /// <param name="select">If set to <c>true</c> selects the File to print next.</param>
+    /// <param name="print">If set to <c>true</c> prints the File.</param>
+    //public string UploadFile(string filename,  string onlinepath="", string location="local", bool select=false, bool print=false)
+    //{
+    //    string fileData =string.Empty;
+    //    fileData= System.IO.File.ReadAllText(filename);
+    //    filename=(filename.Split('/')[filename.Split('/').Length-1]).Split('\\')[filename.Split('\\')[filename.Split('\\').Length - 1].Length - 1];
+    //    string packagestring="" +
+    //        "--{0}\r\n" +
+    //        "Content-Disposition: form-data; name=\"file\"; filename=\""+filename+"\"\r\n" +
+    //        "Content-Type: application/octet-stream\r\n" +
+    //        "\r\n" +
+    //        fileData + "\r\n" +
+
+    //        "--{0}\r\n" +
+    //        "Content-Disposition: form-data; name=\"path\";\r\n" +
+    //        "\r\n" +
+    //        onlinepath + "\r\n" +
+    //        "--{0}--\r\n" +
+    //        "Content-Disposition: form-data; name=\"select\";\r\n" +
+    //        "\r\n" +
+    //        select + "\r\n" +
+    //        "--{0}--\r\n" +
+    //        "Content-Disposition: form-data; name=\"print\"\r\n" +
+    //        "\r\n" +
+    //        print + "\r\n" +
+    //        "--{0}--\r\n";
+    //    return Connection.PostMultipart(packagestring, "api/files/"+location);
+    //}
 }
+

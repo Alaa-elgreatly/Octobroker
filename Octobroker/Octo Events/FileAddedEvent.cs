@@ -17,7 +17,7 @@ namespace Octobroker.Octo_Events
         public string Path { get; private set; }
         public string LocalFilePath { get; private set; }
         public string SlicedFilePath { get;  set; }
-
+        public string SlicedFileName => System.IO.Path.ChangeExtension(FileName, "gcode");
         public string Type { get; private set; }
         public event EventHandler<FileReadyForSlicingArgs> FileReadyForSlicing;
 
@@ -49,21 +49,24 @@ namespace Octobroker.Octo_Events
             return new OctoprintFile() { Name = FileName, Path = this.Path, Type = this.Type };
         }
 
-        public void DownloadAssociatedFile(string location, string DownloadPath, OctoprintConnection Connection )
+        public void DownloadAndSliceAndUploadAssociatedFile(string location, string DownloadPath, OctoprintConnection Connection )
         {
             JObject info = Connection.Files.GetFileInfo(location, this.Path);
             JToken refs = info.Value<JToken>("refs");
             string downloadLink = refs.Value<string>("download");
             this.Connection = Connection;
+            
             using (WebClient myWebClient = new WebClient())
             {
                 try
                 {
                     //myWebClient.DownloadFileAsync(new Uri(downloadLink), DownloadPath);
-                    myWebClient.DownloadFile(new Uri(downloadLink), DownloadPath);
-                    LocalFilePath = DownloadPath;
+                    myWebClient.DownloadFile(new Uri(downloadLink), DownloadPath+FileName);
+                    LocalFilePath = DownloadPath + FileName;
+                    SlicedFilePath = DownloadPath + FileName;
+                    SlicedFilePath = System.IO.Path.ChangeExtension(LocalFilePath, null);
                     FileReadyForSlicing?.Invoke(this, new FileReadyForSlicingArgs(LocalFilePath));
-                    SliceAndUpload(LocalFilePath);
+                    SliceAndUpload(LocalFilePath, SlicedFilePath);
                 }
                 catch (Exception e)
                 {
@@ -76,31 +79,38 @@ namespace Octobroker.Octo_Events
 
 
 
-        public void SliceAndUpload(string LocalFilePath)
+        public void SliceAndUpload(string LocalFilePath, string OutputFilePath)
         {
-            SliceWithPrusa(new PrusaSlicerBroker(), LocalFilePath);
-            UploadToOctoprint(SlicedFilePath,Connection);
+            SliceWithPrusa(new PrusaSlicerBroker(), LocalFilePath,OutputFilePath);
+            UploadToOctoprintAsync(SlicedFilePath,Connection);
         }
 
-        private void SliceWithPrusa(ISlicerBroker slicer ,string LocalFilePath, string OutputPath = "")
+        private  void SliceWithPrusa(ISlicerBroker slicer ,string LocalFilePath, string OutputPath = "")
         {
-            OutputPath = "G:\\Work\\vasawithlayer";
+            //OutputPath = "G:\\Work\\vasawithlayer";
 
             PrusaSlicerBroker prusaSlicer = (PrusaSlicerBroker) slicer;
             if (prusaSlicer==null)
                 return;
 
+            // the stl file path to be sliced
             prusaSlicer.FilePath = LocalFilePath;
-            prusaSlicer.OutputPath = OutputPath;
+            //if the path of the output gcode file is specified then slice and put it in that path (must be specified without .gcode extension)
+            if (OutputPath!=null)
+                prusaSlicer.OutputPath = OutputPath;
+            // if there is no specific slicing path, slice in the same place of the stl but remove the .stl first of the sliced path then append .gcode 
+            else
+                OutputPath = System.IO.Path.ChangeExtension(LocalFilePath, null);
             prusaSlicer.Slice();
-            this.SlicedFilePath = OutputPath;
-            FileSliced?.Invoke(this, new FileSlicedArgs(OutputPath));
+            this.SlicedFilePath = OutputPath+".gcode";
+            FileSliced?.Invoke(this, new FileSlicedArgs(SlicedFilePath));
         }
-        /*private*/ public void UploadToOctoprint(string SlicedFilePath,OctoprintConnection Connection)
+
+        /*private*/ public async Task UploadToOctoprintAsync(string SlicedFilePath,OctoprintConnection Connection)
         {
             if (Connection==null)
                 return;
-            string uploadResponse =Connection.Files.UploadFile(SlicedFilePath,"trial");
+            string uploadResponse = await  Connection.Files.UploadFile(SlicedFilePath, SlicedFileName, "");
         }
 
 
@@ -113,7 +123,7 @@ namespace Octobroker.Octo_Events
                 return;
             if (string.IsNullOrEmpty(fileargs.FilePath))
                 return;
-            SliceAndUpload(fileargs.FilePath);
+            //SliceAndUpload(fileargs.FilePath,);
         }
         private void OnFileSliced(object sender, EventArgs args)
         {
@@ -124,7 +134,7 @@ namespace Octobroker.Octo_Events
             if (string.IsNullOrEmpty(slicedArgs.SlicedFilePath))
                 return;
 
-            UploadToOctoprint(slicedArgs.SlicedFilePath,Connection);
+            UploadToOctoprintAsync(slicedArgs.SlicedFilePath,Connection);
         }
 
     }
