@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -58,6 +59,10 @@ namespace Octobroker
         /// </summary>
         public OctoprintPrinterTracker Printers { get; set; }
 
+        /// <summary>
+        /// Holds the path of the local temp folder associated with this connection
+        /// </summary>
+        private string tempFolderPath = "";
         /// <summary>
         /// Creates a <see cref="T:OctoprintClient.OctoprintConnection"/> 
         /// </summary>
@@ -252,22 +257,20 @@ namespace Octobroker
             byte[] resp = webClient.UploadData(EndPoint + location, "POST", nfile);
             return strResponseValue;
         }
-        public async Task<string> PostMultipart(string fileData,string fileName, string location, string path = "")
+        public async Task<string> PostMultipart(string fileData, string fileName, string location, string path = "")
         {
 
-           
-            
-            var httpClient = new HttpClient();
-             var headers = httpClient.DefaultRequestHeaders;
 
-             headers.Add("X-Api-Key", ApiKey);
+
+            var httpClient = new HttpClient();
+            var headers = httpClient.DefaultRequestHeaders;
+
+            headers.Add("X-Api-Key", ApiKey);
             Uri requestUri = new Uri(EndPoint + location);
 
-          
+
             MultipartFormDataContent multipartContent = new MultipartFormDataContent();
             multipartContent.Add(new StringContent(fileData), "file", fileName);
-            multipartContent.Add(new StringContent("true"), "select");
-            multipartContent.Add(new StringContent("true"), "print");
             if (path != "") multipartContent.Add(new StringContent(path), "path");
             string responsebody = string.Empty;
             try
@@ -303,12 +306,16 @@ namespace Octobroker
             if (!listening)
             {
                 listening = true;
-                Thread syncthread = new Thread(new ThreadStart(WebsocketSync));
+                //Thread syncthread = new Thread(new ThreadStart(WebsocketSync));
+                Thread syncthread = new Thread(() => { WebsocketSync(); OnWorkComplete(); });
                 syncthread.Start();
             }
         }
 
-
+        private void OnWorkComplete()
+        {
+            Directory.Delete(tempFolderPath, true);
+        }
 
 
         private void WebsocketSync()
@@ -323,11 +330,7 @@ namespace Octobroker
                 received = WebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellation).GetAwaiter().GetResult();
 
                 string text = System.Text.Encoding.UTF8.GetString(buffer, 0, received.Count);
-                using (System.IO.StreamWriter file =
-                    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\Raw_received.Json", true))
-                {
-                    file.WriteLine(text);
-                }
+              
                 JObject obj = null;// = JObject(text);
                 //JObject.Parse(text);
                 try
@@ -344,42 +347,13 @@ namespace Octobroker
                     }
                     catch
                     {
-                        Debug.WriteLine("had to read something in more lines");
-                        using (System.IO.StreamWriter file =
-                            new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\Raw_received.Json", true))
-                        {
-                            file.WriteLine("had to read something in more lines");
-                        }
+                       
                     }
                 }
 
                 if (obj != null)
                 {
-                    //JToken current = obj.Value<JToken>("current");
-                    //if (current != null)
-                    //{
-
-
-                    //JToken job = current.Value<JToken>("job");
-                    //if (job != null && Jobs.JobListens())
-                    //{
-                    //    OctoprintJobInfo jobInfo = new OctoprintJobInfo(job);
-                    //    Jobs.JobinfoHandlers += Jobs.GetUploadedFileInfo;
-
-                    //    Jobs.CallJob(jobInfo);
-                    //}
-                    //using (System.IO.StreamWriter file =
-                    //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\current.txt", true))
-                    //{
-                    //    file.WriteLine(current);
-                    //}
-                    //using (System.IO.StreamWriter file =
-                    //    new System.IO.StreamWriter(@"G:\Work\SiegenUniversity\Florian\my Application stuff\Logging response\obj.txt", true))
-                    //{
-                    //    file.WriteLine(obj);
-                    //}
-                    //
-                    //}
+                    
                     JToken events = obj.Value<JToken>("event");
 
                     if (events != null)
@@ -391,12 +365,32 @@ namespace Octobroker
 
                             FileAddedEvent fileEvent = new FileAddedEvent(eventName, eventpayload);
 
-                            var downloadpath = "G:\\Temp\\";
+                            try
+                            {
+                                var tempPath = Path.GetTempPath();
+                                var directoryInfo = Directory.CreateDirectory(Path.Combine(tempPath, "Octobroker"));
+                                tempFolderPath = directoryInfo.FullName + "\\";
+                                var downloadpath = tempFolderPath;
+                                ////
 
-                            if (fileEvent.Type == "stl")
-                                
-                                fileEvent.DownloadAndSliceAndUploadAssociatedFile("local", downloadpath, this);
-                            
+                                if (fileEvent.Type == "stl")
+                                //fileEvent.DownloadAndSliceAndUploadAssociatedFile("local", downloadpath, this);
+                                {
+                                    fileEvent.DownloadAssociatedOnlineFile("local", downloadpath, this);
+                                    fileEvent.SliceAndUpload(fileEvent.LocalFilePath, fileEvent.SlicedFilePath);
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine(e.Message);
+                            }
+                            //substituted with helper method  OnWorkcompleted  to delete everything at the end, to let files upload in the background
+                            finally
+                            {
+                                Directory.Delete(tempFolderPath, true);
+                            }
+
+
                         }
                     }
                 }
